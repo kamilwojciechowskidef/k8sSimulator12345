@@ -409,8 +409,6 @@ def schedule_ljf_lpt_pods(jobs_definitions, node_simulators_list):
 # Główna funkcja uruchamiająca symulację.
 def main(node_file_url, workload_file_url, algorithm_name="LJF_LPT_Pods_SLA_MRP_Style"):
     print(f"In scheduling algorithm: {algorithm_name}， simulation test：")
-    print("---Simualtion Reset---")
-    print("---Simulation Start---")
 
     nodes_data = load_yaml_file(node_file_url)
     jobs_data = load_yaml_file(workload_file_url)
