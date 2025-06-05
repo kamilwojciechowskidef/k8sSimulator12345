@@ -29,7 +29,7 @@ def draw_job_figures(
         save_filename: str = None,
         show_figure: bool = True,
 ):
-    with plt.style.context('ieee'):
+    with plt.style.context('default'):
         now = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
         save_filename = save_filename or root_dir.replace('/', '_') + now + ".pdf"
 
@@ -83,7 +83,7 @@ def draw_job_figures1(
         save_filename: str = None,
         show_figure: bool = True,
 ):
-    with plt.style.context('ieee'):
+    with plt.style.context('default'):
         now = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
         save_filename = save_filename or root_dir.replace('/', '_') + now + ".pdf"
 
@@ -136,7 +136,7 @@ def draw_job_figures2(
         save_filename: str = None,
         show_figure: bool = True,
 ):
-    with plt.style.context('ieee'):
+    with plt.style.context('default'):
         now = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
         save_filename = save_filename or root_dir.replace('/', '_') + now + ".png"
 
