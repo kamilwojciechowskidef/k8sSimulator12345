@@ -7,7 +7,15 @@ import munch
 import os
 import math
 import shutil
-from json import dumps
+import re
+import os
+import subprocess
+import glob
+from reorder import *
+import pandas as pd
+import heapq
+import yaml
+from typing import List, Tuple, Dict
 #from figures.draw_pod_figures import draw_pods_figures
 import prettytable
 from figures.figures import draw_job_figures
@@ -16,9 +24,110 @@ from figures.figures import draw_job_figures2
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 def _get_key_or_empty(data, key):
     pods = munch.munchify(data[key])
     return pods if pods is not None else []
+
+
+
+
+def lpt_schedule(tasks: List[Tuple[str, float]], m: int) -> Tuple[Dict[int, List[Tuple[str, float]]], List[float]]:
+    """
+    Harmonogramowanie zadań metodą LPT (Longest Processing Time).
+
+    :param tasks: lista zadań w postaci (task_id, p_time)
+    :param m: liczba jednorodnych maszyn
+    :return: (assignment, loads), gdzie
+             - assignment: dict, klucz = id maszyny (0..m-1), wartość = lista przypisanych (task_id, p_time)
+             - loads: lista obciążeń maszyn (sumy p_time) w kolejności maszyn 0..m-1
+
+    Algorytm:
+    1. Sortujemy zadania malejąco po czasie wykonania p_time.
+    2. Używamy kopca (heapq) do śledzenia aktualnego obciążenia każdej maszyny.
+       Kopiec przechowuje pary (load, machine_id). Na początku wszystkie load = 0.
+    3. Dla kolejnego zadania z posortowanej listy bierzemy maszynę o najmniejszym load,
+       przypisujemy zadanie, aktualizujemy jej obciążenie i wrzucamy z powrotem do kopca.
+    """
+    # 1. Sortowanie zadań malejąco według p_time
+    tasks_sorted = sorted(tasks, key=lambda x: x[1], reverse=True)
+
+    # 2. Inicjalizacja: kopiec maszyn (load, machine_id)
+    heap = [(0.0, machine_id) for machine_id in range(m)]
+    heapq.heapify(heap)
+
+    assignment: Dict[int, List[Tuple[str, float]]] = {machine_id: [] for machine_id in range(m)}
+    loads = [0.0] * m
+
+    # 3. Przydzielanie kolejno zadań
+    for task_id, p_time in tasks_sorted:
+        current_load, machine_id = heapq.heappop(heap)
+        assignment[machine_id].append((task_id, p_time))
+        new_load = current_load + p_time
+        loads[machine_id] = new_load
+        heapq.heappush(heap, (new_load, machine_id))
+
+    return assignment, loads
+
+
+def extract_tasks_from_volcano_yaml(volcano_dict) -> List[Tuple[str, float]]:
+    """
+    Z wczytanego wcześniej słownika (workload_dict = yaml.safe_load(...)) zawierającego klucz 'jobs'
+    zwraca listę krotek (job_name, predicted_runtime). 
+    Zakładamy, że prognozowany czas w sekundach jest przechowywany jako etykieta 
+    terminationTime w: 
+      job['spec']['tasks'][0]['template']['metadata']['labels']['terminationTime'].
+    
+    Jeśli dany job nie ma tej etykiety lub wartość nie jest liczbą, 
+    używamy domyślnej wartości 0.0.
+    """
+    tasks: List[Tuple[str, float]] = []
+    jobs = volcano_dict.get('jobs', [])
+
+    for job in jobs:
+        # 1) Wyciągnij nazwę jobu
+        job_name = job.get('metadata', {}).get('name', 'unknown-job')
+
+        # 2) Spróbuj wyczytać etykietę terminationTime:
+        p_time = 0.0
+        try:
+            labels = job['spec']['tasks'][0]['template']['metadata']['labels']
+            # Jeśli klucz istnieje, pobierz wartość (napis) i zamień na float
+            if 'terminationTime' in labels:
+                p_time = float(labels['terminationTime'])
+        except Exception:
+            # Jeśli cokolwiek zawiedzie (brak struktur, nieprawidłowa konwersja),
+            # to zostawiamy p_time = 0.0
+            p_time = 0.0
+
+        # 3) Dodajemy do listy
+        tasks.append((job_name, p_time))
+
+    return tasks
+
+def reorder_volcano_items(volcano_dict, m: int):
+    """
+    Przełoży listę volcano_dict['jobs'] na kolejność LPT według prognozowanych czasów
+    ("terminationTime" w etykietach). 
+
+    - volcano_dict: słownik uzyskany z yaml.safe_load(...)
+    - m: liczba "maszyn" (tu potrzebna tylko po to, by sygnalizować liczbę slotów; 
+         w tej prostej wersji i tak sortujemy wyłącznie po czasie).
+    """
+    # 1. Wyciągnij (job_name, predicted_runtime):
+    tasks = extract_tasks_from_volcano_yaml(volcano_dict)
+    # 2. Zbuduj słownik: job_name -> runtime (float)
+    runtime_map = {name: rt for name, rt in tasks}
+
+    # 3. Posortuj volcano_dict['jobs'] malejąco według runtime_map[job_name]:
+    volcano_dict['jobs'].sort(
+        key=lambda job_obj: runtime_map.get(job_obj.get('metadata', {}).get('name', ''), 0.0),
+        reverse=True
+    )
+
+    # Funkcja operuje "in-place" na volcano_dict, ale możemy też zwrócić go dla czytelności:
+    return volcano_dict
+
 
 def reset(sim_base_url, node_file_url, workload_file_url):
     client = JsonHttpClient(sim_base_url)
@@ -45,7 +154,7 @@ def reset(sim_base_url, node_file_url, workload_file_url):
 
 def step(sim_base_url, conf_file_url, pods_result_url, jobs_result_url, figures_result_url, scheduler):
 
-    with plt.style.context('ieee'):
+    with plt.style.context('default'):
 
         client = JsonHttpClient(sim_base_url)
 
@@ -55,6 +164,21 @@ def step(sim_base_url, conf_file_url, pods_result_url, jobs_result_url, figures_
 
         JCTheaders = ['Job Name', 'Job Completed Time(s)']
         JCT_table = prettytable.PrettyTable(JCTheaders)
+        
+         # === PRZYKŁADOWE UŻYCIE LPT (opcjonalne) ===
+        # Na tym etapie (przed wysłaniem żądania /step) można wywołać funkcję lpt_schedule,
+        # jeżeli chcemy ręcznie zaplanować zadania na maszynach. Przykład:
+        #
+        tasks_example = [("task1", 8.0), ("task2", 3.5), ("task3", 5.2), ("task4", 1.0)]
+        num_machines = 3
+        assignment, loads = lpt_schedule(tasks_example, num_machines)
+        print("LPT Assignment:", assignment)
+        print("LPT Loads   :", loads)
+        #
+        # W rzeczywistości należałoby wczytać czasy wykonania zadań (np. na podstawie workload_file_url),
+        # a potem przetworzyć wyniki assignment zgodnie z logistyką symulatora.
+        #
+        # === KONIEC PRZYKŁADOWEGO UŻYCIA LPT ===
 
         with open(conf_file_url, 'r', encoding='utf-8') as file:  # conf2是nodeorder
             conf_file = file.read()
@@ -231,18 +355,30 @@ def step(sim_base_url, conf_file_url, pods_result_url, jobs_result_url, figures_
         plt.show()
 
         pod_result_1 = os.path.join(pods_result_url, 'tasksSUM.md')
-        file2 = open(pod_result_1, 'w')
+        file2 = open(pod_result_1, 'w',encoding='utf-8')
         file2.write(str(succeed_table) + "\n")
-        file2.write('Total%d个Task。\n' % (len(allpodruntime)))
-        file2.write('Task average time：%.2fs，Minimum time：%.2fs，Maximum time：%.2fs。 \n' % (sum(allpodruntime) / len(allpodruntime),
-                                                                  min(allpodruntime), max(allpodruntime)))
+        file2.write(f'TotalTask: {len(allpodruntime)}\n')
+        file2.write(
+        'Task average time: %.2fs, Minimum time: %.2fs, Maximum time: %.2fs.\n' % (
+        sum(allpodruntime) / len(allpodruntime),
+        min(allpodruntime),
+        max(allpodruntime)
+        )
+    )
+
 
         job_result_1 = os.path.join(jobs_result_url, 'coutJCT.md')
-        file3 = open(job_result_1, 'w')
+        file3 = open(job_result_1, 'w',encoding='utf-8')
         file3.write(str(JCT_table) + "\n")
         file3.write('Summary: ' + "\n")
-        file3.write('Total%d个Job。\n' % (len(countJct)))
-        file3.write('Job average time：%.2fs，Minimum time：%.2fs，Maximum time：%.2fs。\n' % (sum(countJct) / len(countJct), min(countJct), max(countJct)))
+        file3.write(f'TotalJob: {len(countJct)}\n')
+        file3.write(
+        'Job average time：%.2fs，Minimum time：%.2fs，Maximum time：%.2fs。\n' % (
+        sum(countJct) / len(countJct),
+        min(countJct),
+        max(countJct)
+        )
+    )
         file3.write('Jobs MakeSpan is：%.2fs。\n' % max(countJct))
 
         time.sleep(0.5)
@@ -250,64 +386,133 @@ def step(sim_base_url, conf_file_url, pods_result_url, jobs_result_url, figures_
         file3.close()
 
 if __name__ == '__main__':
-
     sim_base_url = 'http://localhost:8006'
-    node_file_url = 'common/nodes/nodes_7-0.yaml'
-    workload_file_url = 'common/workloads/AI-workloads/wsl_test_mrp-2.yaml'
+    base_dir = os.path.dirname(__file__)
 
-    if os.path.exists(os.path.join(os.getcwd(), "volcano-sim-result/")):
-        shutil.rmtree(os.path.join(os.getcwd(), "volcano-sim-result/"))
-    os.makedirs(os.path.join(os.getcwd(), "volcano-sim-result/"), exist_ok=False)
+    # ─── USTALAMY KATALOGI ──────────────────────────────────────────────────────────────────
+    nodes_dir      = os.path.join(base_dir, "common", "nodes")
+    workloads_dir  = os.path.join(base_dir, "common", "workloads", "AI-workloads")
+    sched_conf_dir = os.path.join(base_dir, "common", "scheduler_conf_sim")
+
+    # Sprawdzamy, czy katalogi istnieją
+    if not os.path.isdir(nodes_dir):
+        print(f"Nie znalazłem katalogu z węzłami: '{nodes_dir}'")
+        exit(1)
+    if not os.path.isdir(workloads_dir):
+        print(f"Nie znalazłem katalogu z workloadami: '{workloads_dir}'")
+        exit(1)
+    if not os.path.isdir(sched_conf_dir):
+        print(f"Nie znalazłem katalogu z konfiguracjami schedulerów: '{sched_conf_dir}'")
+        exit(1)
+
+    # ─── ZBIERAMY WSZYSTKIE PLIKI .yaml ───────────────────────────────────────────────────────
+    node_files = sorted(glob.glob(os.path.join(nodes_dir, "*.yaml")))
+    workload_files = sorted(glob.glob(os.path.join(workloads_dir, "*.yaml")))
+
+    # Usuń folder z wynikami (jeśli istnieje) i stwórz go na nowo
+    result_root = os.path.join(os.getcwd(), "volcano-sim-result")
+    if os.path.exists(result_root):
+        shutil.rmtree(result_root)
+    os.makedirs(os.path.join(result_root), exist_ok=False)
     print("Delete history folder！！！\n")
 
-    for i in range(1):
-        print("**************************************************** " + str(i+1) + " test: ****************************************************")
+    # ─── PĘTLA PO KOMBINACJACH: node_file × workload_file ─────────────────────────────────
+    for node_file_url in node_files:
+        node_label = os.path.splitext(os.path.basename(node_file_url))[0]
 
-        # schedulers = ["GANG_LRP", "GANG_MRP", "GANG_BRA", "SLA_LRP", "SLA_MRP", "SLA_BRA",
-        #               "GANG_DRF_LRP", "GANG_DRF_MRP", "GANG_DRF_BRA", "GANG_BINPACK", "SLA_BINPACK", "GANG_DRF_BINPACK"]
+        for workload_file_url in workload_files:
+            workload_label = os.path.splitext(os.path.basename(workload_file_url))[0]
 
-        # schedulers = ["GANG_LRP", "GANG_MRP", "GANG_BRA", "SLA_LRP", "SLA_MRP", "SLA_BRA",
-        #               "GANG_DRF_LRP", "GANG_DRF_MRP", "GANG_DRF_BRA", "GANG_BINPACK", "SLA_BINPACK", "GANG_DRF_BINPACK", "Default"]
+            # ─── REORDER WORKLOADU (LPT) ─────────────────────────────────────────────────────
+            with open(workload_file_url, 'r', encoding='utf-8') as f_in:
+                volcano_dict = yaml.safe_load(f_in)
 
-        #schedulers = ["GANG_BINPACK", "GANG_LRP", "GANG_MRP", "GANG_BRA", "DRF_BINPACK", "DRF_LRP", "DRF_MRP", "DRF_BRA", "SLA_BINPACK", "SLA_LRP", "SLA_MRP", "SLA_BRA"]
-        #schedulers = ["GANG_BINPACK", "DRF_BINPACK", "SLA_BINPACK"]
-        # schedulers = ["SLA_LRP", "SLA_MRP", "SLA_BRA", "DRF_LRP", "DRF_MRP", "DRF_BRA", "GANG_LRP", "GANG_MRP", "GANG_BRA",
-        #               "GANG_DRF_LRP", "GANG_DRF_MRP", "GANG_DRF_BRA", "GANG_DRF_BINPACK"]
-        schedulers = ["GANG_LRP", "GANG_MRP", "GANG_BRA"]
-        for scheduler in schedulers:
+            m = 4
+            volcano_dict = reorder_volcano_items(volcano_dict, m)
+
+            # Zapisujemy do pliku tymczasowego:
+            tmp_workload = os.path.join(base_dir, "tmp_reordered.yaml")
+            with open(tmp_workload, 'w', encoding='utf-8') as f_out:
+                yaml.dump(volcano_dict, f_out, sort_keys=False)
+            # ─────────────────────────────────────────────────────────────────────────────────
+
+            print(f"==============================================================")
+            print(f"Przetwarzam: węzły='{node_label}', workload='{workload_label}'")
+            print(f"==============================================================\n")
+
+            # ─── PETLA PO SCHEDULERACH ─────────────────────────────────────────────────────
+            schedulers=["SLA_LRP"]
+            # schedulers = [
+            #     "SLA_LRP", "SLA_MRP", "SLA_BRA",
+            #     "DRF_LRP", "DRF_MRP", "DRF_BRA",
+            #     "GANG_LRP", "GANG_MRP", "GANG_BRA",
+            #     "GANG_DRF_LRP", "GANG_DRF_MRP", "GANG_DRF_BRA",
+            #     "GANG_DRF_BINPACK"
+            # ]
+            # for scheduler in schedulers:
+            #     now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+
+            #     conf_file_url = os.path.join(sched_conf_dir, f"{scheduler}.yaml")
+            #     if not os.path.isfile(conf_file_url):
+            #         print(f"Brak pliku: {conf_file_url}  – pomijam '{scheduler}'")
+            #         continue
+
+            #     # Przygotowujemy ścieżki do zapisu wyników
+            #     pods_result_url    = os.path.join(result_root, "tasks",   f"{now}-{node_label}-{workload_label}-{scheduler}")
+            #     jobs_result_url    = os.path.join(result_root, "jobs",    f"{now}-{node_label}-{workload_label}-{scheduler}")
+            #     figures_result_url = os.path.join(result_root, "figures", f"{now}-{node_label}-{workload_label}-{scheduler}")
+
+            #     os.makedirs(pods_result_url, exist_ok=True)
+            #     os.makedirs(jobs_result_url, exist_ok=True)
+            #     os.makedirs(figures_result_url, exist_ok=True)
+
+            #     print("-----------------------------------------------------------------")
+            #     print(f"In scheduling algorithm: {scheduler}  (nodes='{node_label}', workload='{workload_label}')")
+            #     print("-----------------------------------------------------------------")
+                
+            #     # Resetujemy stan symulatora
+            #     reset(sim_base_url, node_file_url, tmp_workload)
+
+
+            #     # Uruchamiamy krok po kroku symulację:
+            #     step(sim_base_url,
+            #          conf_file_url,
+            #          pods_result_url,
+            #          jobs_result_url,
+            #          figures_result_url,
+            #          scheduler)
+            #     time.sleep(1)
+            #     print("\n")
+            
+            # w SimRun.py zastąp cały blok „for scheduler in schedulers:” tym:
+            scheduler = "SLA_LRP"
             now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-            # conf_file_url = 'common/scheduler_conf/conf_1.yaml'
-            conf_file_url = 'common/scheduler_conf_sim/' + str(scheduler) + '.yaml'
-            pods_result_url = "volcano-sim-result/tasks/" + str(now) + "-" + str(scheduler)
-            jobs_result_url = "volcano-sim-result/jobs/" + str(now) + "-" + str(scheduler)
-            figures_result_url = "volcano-sim-result/figures/" + str(now) + "-" + str(scheduler)
+            conf_file_url = 'common/scheduler_conf_sim/' + scheduler + '.yaml'
+            pods_result_url = "volcano-sim-result/tasks/" + now + "-" + scheduler
+            jobs_result_url = "volcano-sim-result/jobs/" + now + "-" + scheduler
+            figures_result_url = "volcano-sim-result/figures/" + now + "-" + scheduler
 
             os.makedirs(pods_result_url, exist_ok=True)
             os.makedirs(jobs_result_url, exist_ok=True)
             os.makedirs(figures_result_url, exist_ok=True)
 
             print("-----------------------------------------------------------------")
-            print("In scheduling algorithm: " + str(scheduler) + "， simulation test：")
+            print(f"In scheduling algorithm: {scheduler}  (węzły='nodes_1', workload='wsl_test_3')")
             reset(sim_base_url, node_file_url, workload_file_url)
             time.sleep(1)
             step(sim_base_url, conf_file_url, pods_result_url, jobs_result_url, figures_result_url, scheduler)
-            time.sleep(1)
-            #draw_pods_figures(os.path.join(pods_result_url, 'tasksSUM.csv'), figures_result_url, scheduler)
             print("-----------------------------------------------------------------")
-            print("")
+            
+            # ─── USUŃ PLIK TYMCZASOWY ────────────────────────────────────────────────────────
+            try:
+                os.remove(tmp_workload)
+            except FileNotFoundError:
+                pass
 
     print("****************************************************！！！Simulation Stop！！！****************************************************")
 
     time.sleep(1)
-    # draw_job_figures(
-    #     'volcano-sim-result/jobs',
-    #     'volcano-sim-result/figures/box'
-    # )
-    # draw_job_figures1(
-    #     'volcano-sim-result/jobs',
-    #     'volcano-sim-result/figures/avg'
-    # )
     draw_job_figures2(
-        'volcano-sim-result/jobs',
-        'volcano-sim-result/figures/JCTmakespan'
+        os.path.join(result_root, "jobs"),
+        os.path.join(result_root, "figures", "JCTmakespan")
     )
