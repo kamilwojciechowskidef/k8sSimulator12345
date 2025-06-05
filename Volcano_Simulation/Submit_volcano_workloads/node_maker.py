@@ -36,6 +36,7 @@ class DynamicListFrame(ttk.Frame):
         master,
         item_label_singular,
         field_definitions,
+        initial_data,
         min_items=0,
     ):
         # Inicjalizuje ramkę, ustawia etykiety, funkcję definicji pól i minimalną liczbę elementów.
