@@ -52,21 +52,6 @@ def step(sim_base_url, conf_file_url, pods_result_url, jobs_result_url, figures_
         JCTheaders = ['Job Name', 'Job Completed Time(s)']
         JCT_table = prettytable.PrettyTable(JCTheaders)
 
-        # === PRZYKŁADOWE UŻYCIE LPT (opcjonalne) ===
-        # Na tym etapie (przed wysłaniem żądania /step) można wywołać funkcję lpt_schedule,
-        # jeżeli chcemy ręcznie zaplanować zadania na maszynach. Przykład:
-        #
-        #   tasks_example = [("task1", 8.0), ("task2", 3.5), ("task3", 5.2), ("task4", 1.0)]
-        #   num_machines = 3
-        #   assignment, loads = lpt_schedule(tasks_example, num_machines)
-        #   print("LPT Assignment:", assignment)
-        #   print("LPT Loads   :", loads)
-        #
-        # W rzeczywistości należałoby wczytać czasy wykonania zadań (np. na podstawie workload_file_url),
-        # a potem przetworzyć wyniki assignment zgodnie z logistyką symulatora.
-        #
-        # === KONIEC PRZYKŁADOWEGO UŻYCIA LPT ===
-
         with open(conf_file_url, 'r', encoding='utf-8') as file:  # conf2 to nodeorder
             conf_file = file.read()
         data = client.get_json('/step', json={
