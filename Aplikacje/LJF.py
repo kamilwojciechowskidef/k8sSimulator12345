@@ -486,7 +486,7 @@ def main(node_file_url, workload_file_url, algorithm_name="LJF_LPT_Pods_SLA_MRP_
                 pd["Running_node"],
                 format_cpu_gpu(pd["Requests_cpu"]),
                 format_cpu_gpu(pd["Limits_cpu"]),
-                format_mem(pd["Requests_memory_mb"]),
+                # format_mem(pd["Requests_memory_mb"]),
                 format_mem(pd["Limits_memory_mb"]),
                 format_cpu_gpu(pd["Requests_gpu"]),
                 format_cpu_gpu(pd["Limits_gpu"]),
@@ -509,7 +509,7 @@ def main(node_file_url, workload_file_url, algorithm_name="LJF_LPT_Pods_SLA_MRP_
 
 
 if __name__ == "__main__":
-    node_file_url = "common/nodes/nodes_7-0.yaml"  # Podmień na prawidłową ścieżkę
-    workload_file_url = "common/workloads/AI-workloads/wsl_test_mrp-2.yaml"  # Podmień
+    node_file_url = r"Volcano_Simulation\Submit_volcano_workloads\common\nodes\nodes_7-0.yaml"  # Podmień na prawidłową ścieżkę
+    workload_file_url = r"Volcano_Simulation\Submit_volcano_workloads\common\workloads\AI-workloads\wsl_test_mrp-2.yaml"  # Podmień
 
     main(node_file_url, workload_file_url)
