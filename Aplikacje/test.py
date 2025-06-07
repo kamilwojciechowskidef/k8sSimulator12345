@@ -11,6 +11,189 @@ from datetime import datetime, timedelta
 from prettytable import PrettyTable
 import os 
 
+def schedule_sjf_spt_pods(jobs_definitions, node_simulators_list):
+    if not jobs_definitions or not node_simulators_list:
+        return 0, {}, {}
+    all_pods_to_schedule = []
+    job_total_estimated_size = {}
+    pod_global_id_counter = 0
+
+    # --- identyczne przygotowanie danych jak w LJF ---
+    for job_idx, job_def in enumerate(jobs_definitions):
+        job_name = job_def.get("metadata", {}).get("name", f"job-{job_idx}")
+        job_submit_time = float(
+            job_def.get("metadata", {}).get("labels", {}).get("sub-time", "0")
+        )
+        job_total_estimated_size[job_name] = 0
+        if "spec" not in job_def or "tasks" not in job_def["spec"]:
+            continue
+        for task_idx, task_def in enumerate(job_def["spec"]["tasks"]):
+            replicas = task_def.get("replicas", 1)
+            container_def = (
+                task_def.get("template", {}).get("spec", {}).get("containers", [{}])[0]
+            )
+            if not container_def:
+                continue
+            pod_resources = get_pod_resources(container_def)
+            pod_processing_time = estimate_pod_processing_time(
+                pod_resources["requests"], job_def, task_def
+            )
+            job_total_estimated_size[job_name] += pod_processing_time * replicas
+            for r in range(replicas):
+                pod_global_id_counter += 1
+                all_pods_to_schedule.append(
+                    {
+                        "id": pod_global_id_counter,
+                        "pod_name": f"{job_def.get('metadata',{}).get('namespace','default')}-{job_name}-{task_def.get('name','task')}-{r}",
+                        "job_name": job_name,
+                        "job_submit_time": job_submit_time,
+                        "task_name": task_def.get("name", f"task-{task_idx}"),
+                        "replica_num": r,
+                        "processing_time": pod_processing_time,
+                        "resources_requests": pod_resources["requests"],
+                        "resources_limits": pod_resources["limits"],
+                    }
+                )
+
+    # --- UWAGA: KLUCZOWA ZMIANA ---  (rosnąco zamiast malejąco)
+    sorted_job_names_sjf = sorted(
+        job_total_estimated_size.keys(), key=lambda jn: job_total_estimated_size[jn]
+    )
+
+    # podlistę budujemy po kolei wg SJF
+    final_pod_processing_list = []
+    for job_name in sorted_job_names_sjf:
+        final_pod_processing_list.extend(
+            sorted(
+                [p for p in all_pods_to_schedule if p["job_name"] == job_name],
+                key=lambda p: p["id"],
+            )
+        )
+
+    # --- pozostała część pętli jest identyczna, poza sortowaniem ready_to_schedule ---
+    pod_schedule_details = []
+    makespan = 0.0
+    active_nodes_heap = [n for n in node_simulators_list if n.capacity_cpu > 0]
+    heapq.heapify(active_nodes_heap)
+    current_simulation_time = 0.0
+    pending_pods = list(final_pod_processing_list)
+    scheduled_pod_count = 0
+
+    while scheduled_pod_count < len(final_pod_processing_list):
+        if not active_nodes_heap:
+            print("BŁĄD KRYTYCZNY: Brak aktywnych węzłów.")
+            break
+
+        # ---------- KLUCZOWA ZMIANA ----------
+        ready_to_schedule_pods = sorted(
+            [
+                p
+                for p in pending_pods
+                if p["job_submit_time"] <= current_simulation_time
+            ],
+            key=lambda p: p["processing_time"],   #  SPT  (rosnąco!)
+        )
+        # --------------------------------------
+
+        assigned_in_this_step = False
+        if ready_to_schedule_pods:
+            for pod_info in ready_to_schedule_pods:
+                if pod_info not in pending_pods:
+                    continue
+                temp_rejected_nodes = []
+                while active_nodes_heap:
+                    node = heapq.heappop(active_nodes_heap)
+                    potential_start_time = max(
+                        node.get_earliest_next_free_time(),
+                        current_simulation_time,
+                        pod_info["job_submit_time"],
+                    )
+                    node.release_finished_pods_resources(potential_start_time)
+
+                    if node.can_run_pod(
+                        pod_info["resources_requests"], potential_start_time
+                    ):
+                        finish_time = node.assign_pod(
+                            pod_info["id"],
+                            pod_info["processing_time"],
+                            pod_info["resources_requests"],
+                            potential_start_time,
+                        )
+                        # --- zapisy szczegółów (identyczne) ---
+                        pod_schedule_details.append(
+                            {
+                                "Pod_name": pod_info["pod_name"],
+                                "Job_name": pod_info["job_name"],
+                                "Job_submit": format_time(pod_info["job_submit_time"]),
+                                "Pod_create": format_time(pod_info["job_submit_time"]),
+                                "Pod_start": format_time(potential_start_time),
+                                "Pod_end": format_time(finish_time),
+                                "Pod_wait_create": 0.0,
+                                "Pod_wait_run": potential_start_time
+                                - pod_info["job_submit_time"],
+                                "Pod_wait_total": potential_start_time
+                                - pod_info["job_submit_time"],
+                                "Pod_running_time": pod_info["processing_time"],
+                                "Pod_total_time": finish_time
+                                - pod_info["job_submit_time"],
+                                "Running_node": node.name,
+                                "Requests_cpu": pod_info["resources_requests"].get(
+                                    "cpu", 0
+                                ),
+                                "Limits_cpu": pod_info["resources_limits"].get(
+                                    "cpu", 0
+                                ),
+                                "Requests_memory_mb": pod_info[
+                                    "resources_requests"
+                                ].get("memory_mb", 0),
+                                "Limits_memory_mb": pod_info["resources_limits"].get(
+                                    "memory_mb", 0
+                                ),
+                                "Requests_gpu": pod_info["resources_requests"].get(
+                                    "gpu", 0
+                                ),
+                                "Limits_gpu": pod_info["resources_limits"].get(
+                                    "gpu", 0
+                                ),
+                            }
+                        )
+                        makespan = max(makespan, finish_time)
+                        heapq.heappush(active_nodes_heap, node)
+                        pending_pods.remove(pod_info)
+                        scheduled_pod_count += 1
+                        assigned_in_this_step = True
+                        break
+                    else:
+                        temp_rejected_nodes.append(node)
+                for n in temp_rejected_nodes:
+                    heapq.heappush(active_nodes_heap, n)
+
+        if not assigned_in_this_step and pending_pods:
+            next_event = min(
+                min(
+                    (p["job_submit_time"] for p in pending_pods
+                     if p["job_submit_time"] > current_simulation_time),
+                    default=float("inf"),
+                ),
+                min(
+                    (n.get_earliest_next_free_time() for n in active_nodes_heap),
+                    default=float("inf"),
+                ),
+            )
+            if next_event == float("inf"):
+                break
+            current_simulation_time = max(next_event, current_simulation_time + 0.01)
+
+    job_completion_times = {}
+    for pd in pod_schedule_details:
+        job_name = pd["Job_name"]
+        pod_end_s = (
+            datetime.strptime(pd["Pod_end"], "%Y-%m-%d %H:%M:%S") - datetime(1, 1, 1)
+        ).total_seconds()
+        job_completion_times[job_name] = max(
+            job_completion_times.get(job_name, 0.0), pod_end_s
+        )
+    return makespan, pod_schedule_details, job_completion_times
 
 def represent_ordereddict(dumper, data):
     value = []
@@ -413,6 +596,7 @@ def step(
     workload_file_url: str,
     sim_base_url: str = "http://localhost:8006",
     conf_file_url: str = r"C:\Users\kamil\k8sSimulator12345\Volcano_Simulation\Submit_volcano_workloads\common\scheduler_conf_sim\LJF_PW.yaml",
+    heuristic: str = "SJF"
 ):
     """
     Resetuje symulację na porcie 8006, startuje cykl z konf. LJF_PW.yaml,
@@ -470,9 +654,15 @@ def step(
         print("BŁĄD: Nie znaleziono planowalnych węzłów.")
         return
 
-    makespan, pod_details, _job_summary = schedule_ljf_lpt_pods(
+    if heuristic.upper() == "SJF":
+        makespan, pod_details, _ = schedule_sjf_spt_pods(
         jobs_data.get("jobs", []), node_sims
     )
+    else:                           # domyślnie LJF
+        makespan, pod_details, _ = schedule_ljf_lpt_pods(
+        jobs_data.get("jobs", []), node_sims
+    )
+
 
     # Kolumny dokładnie w kolejności z Twojego przykładu
     headers = [
