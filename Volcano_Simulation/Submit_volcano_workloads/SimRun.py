@@ -291,7 +291,7 @@ if __name__ == '__main__':
         #schedulers = ["GANG_BINPACK", "DRF_BINPACK", "SLA_BINPACK"]
         # schedulers = ["SLA_LRP", "SLA_MRP", "SLA_BRA", "DRF_LRP", "DRF_MRP", "DRF_BRA", "GANG_LRP", "GANG_MRP", "GANG_BRA",
         #               "GANG_DRF_LRP", "GANG_DRF_MRP", "GANG_DRF_BRA", "GANG_DRF_BINPACK"]
-        schedulers = ["Default"]
+        schedulers = ["BF_PW"]
         for scheduler in schedulers:
             now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
             # conf_file_url = 'common/scheduler_conf/conf_1.yaml'

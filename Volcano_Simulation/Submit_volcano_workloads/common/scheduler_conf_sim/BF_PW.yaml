@@ -1,0 +1,21 @@
+# BF_PW.yaml
+# Scheduler configuration for Best Fit (BF) heuristic
+# Heurystyka Best Fit - BF: przydziela zadanie do tej VM, która ma
+# wystarczającą ilość wolnych zasobów i pozostawi najmniej niewykorzystanych
+# zasobów po przydzieleniu zadania, minimalizując fragmentację.
+
+actions: "enqueue, allocate, backfill"
+
+tiers:
+  # Tier 1: standardowe priority i conformance
+  - plugins:
+      - name: priority
+      - name: conformance
+
+  # Tier 2: najpierw predicates, potem Best Fit
+  - plugins:
+      - name: predicates
+      - name: bf
+        arguments:
+          # waga heurystyki Best Fit
+          bf.weight: 1

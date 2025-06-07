@@ -1,0 +1,17 @@
+# LJF_PW.yaml
+# Heurystyka Longest‐Job‐First jako kolejny plugin Volcano
+
+actions: "enqueue, allocate, backfill"
+
+tiers:
+  # Tier 1: zawsze priority + conformance
+  - plugins:
+      - name: priority
+      - name: conformance                                   
+  # Tier 2: najpierw ogólne predicates, potem nasz LJF
+  - plugins:
+      - name: predicates
+      - name: ljf
+        arguments:
+          # waga naszego LJF (domyślnie 1)
+          ljf.weight: 1
