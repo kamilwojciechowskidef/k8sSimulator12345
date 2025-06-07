@@ -1,4 +1,4 @@
-# BF_PW.yaml
+# FF_PW.yaml
 actions: "enqueue, allocate, backfill"
 tiers:
   - plugins:
@@ -6,6 +6,6 @@ tiers:
       - name: conformance
   - plugins:
       - name: predicates
-      - name: bf
+      - name: ff
         arguments:
-          bf.weight: 1
+          ff.weight: 1

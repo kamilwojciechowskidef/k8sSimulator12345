@@ -1,4 +1,4 @@
-# BF_PW.yaml
+# LLMF_PW.yaml
 actions: "enqueue, allocate, backfill"
 tiers:
   - plugins:
@@ -6,6 +6,6 @@ tiers:
       - name: conformance
   - plugins:
       - name: predicates
-      - name: bf
+      - name: llmf
         arguments:
-          bf.weight: 1
+          llmf.weight: 1
