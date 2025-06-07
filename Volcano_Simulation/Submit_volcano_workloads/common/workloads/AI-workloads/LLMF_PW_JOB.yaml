@@ -1,0 +1,11 @@
+jobs:
+- apiVersion: batch.volcano.sh/v1alpha1
+  kind: Job
+  metadata:
+    name: LLMF_PW_JOB
+    namespace: default
+    labels:
+      sub-time: '0'
+  spec:
+    minAvailable: 1
+    schedulerName: volcano

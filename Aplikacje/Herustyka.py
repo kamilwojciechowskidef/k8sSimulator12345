@@ -761,8 +761,8 @@ def step(
     node_file_url: str,
     workload_file_url: str,
     sim_base_url: str = "http://localhost:8006",
-    conf_file_url: str = r"C:\Users\kamil\k8sSimulator12345\Volcano_Simulation\Submit_volcano_workloads\common\scheduler_conf_sim\BF_PW.yaml",
-    heuristic: str = "BF"
+    conf_file_url: str = r"C:\Users\kamil\k8sSimulator12345\Volcano_Simulation\Submit_volcano_workloads\common\scheduler_conf_sim\LJF_PW.yaml",
+    heuristic: str = "SJF"
 ):
     """
     Resetuje symulację na porcie 8006, startuje cykl z konf. LJF_PW.yaml,
@@ -899,5 +899,5 @@ def step(
 if __name__ == "__main__":
     step(
         r"C:\Users\kamil\k8sSimulator12345\Volcano_Simulation\Submit_volcano_workloads\common\nodes\nodes_7-0.yaml",
-        r"C:\Users\kamil\k8sSimulator12345\Volcano_Simulation\Submit_volcano_workloads\common\workloads\AI-workloads\wsl_test_3.yaml",
+        r"C:\Users\kamil\k8sSimulator12345\Volcano_Simulation\Submit_volcano_workloads\common\workloads\AI-workloads\wsl_test_lrp.yaml",
     )

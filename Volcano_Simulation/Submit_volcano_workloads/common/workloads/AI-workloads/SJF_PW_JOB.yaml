@@ -1,0 +1,43 @@
+jobs:
+- apiVersion: batch.volcano.sh/v1alpha1
+  kind: Job
+  metadata:
+    name: SJF_PW_JOB
+    namespace: default
+    labels:
+      sub-time: '0'
+  spec:
+    minAvailable: 1
+    schedulerName: volcano
+    tasks:
+    - name: test-gpu
+      replicas: 1
+      template:
+        metadata:
+          labels:
+            app: linc-workload
+            job: gpu-sjf
+            jobTaskNumber: '1'
+            restartTime: '300'
+            restartLimit: '0'
+            terminationTime: '350'
+            terminationLimit: '0'
+        spec:
+          containers:
+          - name: task
+            image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
+            imagePullPolicy: IfNotPresent
+            command:
+            - python3
+            - gpu-test3.py
+            - --epochs=7
+            resources:
+              limits:
+                cpu: '1.0'
+                memory: 1000Mi
+                nvidia.com/gpu: "0"
+              requests:
+                cpu: '0.5'
+                memory: 800Mi
+                nvidia.com/gpu: "0"
+          restartPolicy: OnFailure

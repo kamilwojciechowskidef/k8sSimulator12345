@@ -270,8 +270,8 @@ def step(sim_base_url, conf_file_url, pods_result_url, jobs_result_url, figures_
 if __name__ == '__main__':
 
     sim_base_url = 'http://localhost:8006'
-    node_file_url = 'common/nodes/nodes_7-0.yaml'
-    workload_file_url = 'common/workloads/AI-workloads/wsl_test_lrp.yaml'
+    node_file_url = 'common/nodes/nodes_PW.yaml'
+    workload_file_url = 'common/workloads/AI-workloads/PW_JOBS.yaml'
 
     if os.path.exists(os.path.join(os.getcwd(), "volcano-sim-result/")):
         shutil.rmtree(os.path.join(os.getcwd(), "volcano-sim-result/"))
@@ -291,7 +291,9 @@ if __name__ == '__main__':
         #schedulers = ["GANG_BINPACK", "DRF_BINPACK", "SLA_BINPACK"]
         # schedulers = ["SLA_LRP", "SLA_MRP", "SLA_BRA", "DRF_LRP", "DRF_MRP", "DRF_BRA", "GANG_LRP", "GANG_MRP", "GANG_BRA",
         #               "GANG_DRF_LRP", "GANG_DRF_MRP", "GANG_DRF_BRA", "GANG_DRF_BINPACK"]
-        schedulers = ["BF_PW"]
+        schedulers = ["BF_PW", "FF_PW", "LJF_PW", "SJF_PW", "LLMF_PW"]
+        
+        #schedulers={"DRF_BINPACK","GANG_BINPACK","SLA_BINPACK","GANG_DRF_BINPACK"}
         for scheduler in schedulers:
             now = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
             # conf_file_url = 'common/scheduler_conf/conf_1.yaml'
