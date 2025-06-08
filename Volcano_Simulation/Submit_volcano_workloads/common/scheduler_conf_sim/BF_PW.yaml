@@ -6,6 +6,6 @@ tiers:
       - name: conformance
   - plugins:
       - name: predicates
-      - name: bf
+      - name: nodeorder
         arguments:
           bf.weight: 1

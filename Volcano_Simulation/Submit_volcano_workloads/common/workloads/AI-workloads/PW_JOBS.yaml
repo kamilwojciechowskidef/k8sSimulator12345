@@ -1,124 +1,328 @@
 jobs:
 ###############################################################################
-# 1) gpu-test-0 – 10 Podów
+# 5 Podów × 1 epoch ~= 30s
 ###############################################################################
 - apiVersion: batch.volcano.sh/v1alpha1
   kind: Job
   metadata:
-    name: gpu-test-0
+    name: job-0
     namespace: default
     labels:
       sub-time: "0"
   spec:
-    minAvailable: 10
+    minAvailable: 5
+    schedulerName: volcano
     policies:
       - action: CompleteJob
         event: TaskCompleted
-    schedulerName: volcano
     tasks:
       - name: test-gpu
-        replicas: 10
+        replicas: 5
         template:
           metadata:
             labels:
-              job: gpu-test-0
-              jobTaskNumber: "10"
+              job: "job-0"
+              jobTaskNumber: "5"
           spec:
             restartPolicy: OnFailure
             containers:
               - name: task
                 image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
                 imagePullPolicy: IfNotPresent
-                command: ["python3","gpu-test3.py","--epochs=6"]
+                command: ["python3","gpu-test3.py","--epochs=1"]
                 resources:
                   requests:
-                    cpu: "0.5"        
-                    memory: "800Mi"
+                    cpu: "0.5"
+                    memory: "512Mi"
                     nvidia.com/gpu: "1"
                   limits:
+                    cpu: "0.6"
+                    memory: "768Mi"
+                    nvidia.com/gpu: "1"
+
+###############################################################################
+# 5 Podów × 2 epoch ~= 60s
+###############################################################################
+- apiVersion: batch.volcano.sh/v1alpha1
+  kind: Job
+  metadata:
+    name: job-1
+    namespace: default
+    labels:
+      sub-time: "0"
+  spec:
+    minAvailable: 5
+    schedulerName: volcano
+    policies:
+      - action: CompleteJob
+        event: TaskCompleted
+    tasks:
+      - name: test-gpu
+        replicas: 5
+        template:
+          metadata:
+            labels:
+              job: "job-1"
+              jobTaskNumber: "5"
+          spec:
+            restartPolicy: OnFailure
+            containers:
+              - name: task
+                image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
+                imagePullPolicy: IfNotPresent
+                command: ["python3","gpu-test3.py","--epochs=2"]
+                resources:
+                  requests:
                     cpu: "1.0"
-                    memory: "1000Mi"
-                    nvidia.com/gpu: "1"
-
-
-###############################################################################
-# 2) gpu-test-1 – 10 Podów
-###############################################################################
-- apiVersion: batch.volcano.sh/v1alpha1
-  kind: Job
-  metadata:
-    name: gpu-test-1
-    namespace: default
-    labels:
-      sub-time: "0"
-  spec:
-    minAvailable: 10
-    policies:
-      - action: CompleteJob
-        event: TaskCompleted
-    schedulerName: volcano
-    tasks:
-      - name: test-gpu
-        replicas: 10
-        template:
-          metadata:
-            labels:
-              jobTaskNumber: "10"
-              job: gpu-test-1
-          spec:
-            restartPolicy: OnFailure
-            containers:
-              - name: task
-                image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
-                imagePullPolicy: IfNotPresent
-                command: ["python3","gpu-test3.py","--epochs=6"]
-                resources:
-                  requests:
-                    cpu: "1.0"        # <<< ZMIANA
-                    memory: "1000Mi"
+                    memory: "1Gi"
                     nvidia.com/gpu: "1"
                   limits:
-                    cpu: "2.0"
-                    memory: "2000Mi"
+                    cpu: "1.1"
+                    memory: "1.5Gi"
                     nvidia.com/gpu: "1"
 
 ###############################################################################
-# 3) gpu-test-2 – 1 Pod
+# 5 Podów × 3 epoch ~= 90s
 ###############################################################################
 - apiVersion: batch.volcano.sh/v1alpha1
   kind: Job
   metadata:
-    name: gpu-test-2
+    name: job-2
     namespace: default
     labels:
       sub-time: "0"
   spec:
-    minAvailable: 1
+    minAvailable: 5
+    schedulerName: volcano
     policies:
       - action: CompleteJob
         event: TaskCompleted
-    schedulerName: volcano
     tasks:
       - name: test-gpu
-        replicas: 1
+        replicas: 5
         template:
           metadata:
             labels:
-              jobTaskNumber: "1"
-              job: gpu-test-2
+              job: "job-2"
+              jobTaskNumber: "5"
           spec:
             restartPolicy: OnFailure
             containers:
               - name: task
                 image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
                 imagePullPolicy: IfNotPresent
-                command: ["python3","gpu-test3.py","--epochs=6"]
+                command: ["python3","gpu-test3.py","--epochs=3"]
                 resources:
                   requests:
-                    cpu: "2.0"        # <<< ZMIANA
+                    cpu: "1.5"
                     memory: "2Gi"
                     nvidia.com/gpu: "1"
                   limits:
-                    cpu: "3.5"
+                    cpu: "1.6"
+                    memory: "2.5Gi"
+                    nvidia.com/gpu: "1"
+
+###############################################################################
+# 5 Podów × 4 epoch ~= 120s
+###############################################################################
+- apiVersion: batch.volcano.sh/v1alpha1
+  kind: Job
+  metadata:
+    name: job-3
+    namespace: default
+    labels:
+      sub-time: "0"
+  spec:
+    minAvailable: 5
+    schedulerName: volcano
+    policies:
+      - action: CompleteJob
+        event: TaskCompleted
+    tasks:
+      - name: test-gpu
+        replicas: 5
+        template:
+          metadata:
+            labels:
+              job: "job-3"
+              jobTaskNumber: "5"
+          spec:
+            restartPolicy: OnFailure
+            containers:
+              - name: task
+                image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
+                imagePullPolicy: IfNotPresent
+                command: ["python3","gpu-test3.py","--epochs=4"]
+                resources:
+                  requests:
+                    cpu: "2.0"
                     memory: "4Gi"
+                    nvidia.com/gpu: "1"
+                  limits:
+                    cpu: "2.1"
+                    memory: "4.5Gi"
+                    nvidia.com/gpu: "1"
+
+###############################################################################
+# 5 Podów × 5 epoch ~= 150s
+###############################################################################
+- apiVersion: batch.volcano.sh/v1alpha1
+  kind: Job
+  metadata:
+    name: job-4
+    namespace: default
+    labels:
+      sub-time: "0"
+  spec:
+    minAvailable: 5
+    schedulerName: volcano
+    policies:
+      - action: CompleteJob
+        event: TaskCompleted
+    tasks:
+      - name: test-gpu
+        replicas: 5
+        template:
+          metadata:
+            labels:
+              job: "job-4"
+              jobTaskNumber: "5"
+          spec:
+            restartPolicy: OnFailure
+            containers:
+              - name: task
+                image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
+                imagePullPolicy: IfNotPresent
+                command: ["python3","gpu-test3.py","--epochs=5"]
+                resources:
+                  requests:
+                    cpu: "2.5"
+                    memory: "6Gi"
+                    nvidia.com/gpu: "1"
+                  limits:
+                    cpu: "2.6"
+                    memory: "6.5Gi"
+                    nvidia.com/gpu: "1"
+
+###############################################################################
+# 5 Podów × 6 epoch ~= 180s
+###############################################################################
+- apiVersion: batch.volcano.sh/v1alpha1
+  kind: Job
+  metadata:
+    name: job-5
+    namespace: default
+    labels:
+      sub-time: "0"
+  spec:
+    minAvailable: 5
+    schedulerName: volcano
+    policies:
+      - action: CompleteJob
+        event: TaskCompleted
+    tasks:
+      - name: test-gpu
+        replicas: 5
+        template:
+          metadata:
+            labels:
+              job: "job-5"
+              jobTaskNumber: "5"
+          spec:
+            restartPolicy: OnFailure
+            containers:
+              - name: task
+                image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
+                imagePullPolicy: IfNotPresent
+                command: ["python3","gpu-test3.py","--epochs=6"]
+                resources:
+                  requests:
+                    cpu: "3.0"
+                    memory: "8Gi"
+                    nvidia.com/gpu: "1"
+                  limits:
+                    cpu: "3.1"
+                    memory: "8.5Gi"
+                    nvidia.com/gpu: "1"
+
+###############################################################################
+# 5 Podów × 7 epoch ~= 210s
+###############################################################################
+- apiVersion: batch.volcano.sh/v1alpha1
+  kind: Job
+  metadata:
+    name: job-6
+    namespace: default
+    labels:
+      sub-time: "0"
+  spec:
+    minAvailable: 5
+    schedulerName: volcano
+    policies:
+      - action: CompleteJob
+        event: TaskCompleted
+    tasks:
+      - name: test-gpu
+        replicas: 5
+        template:
+          metadata:
+            labels:
+              job: "job-6"
+              jobTaskNumber: "5"
+          spec:
+            restartPolicy: OnFailure
+            containers:
+              - name: task
+                image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
+                imagePullPolicy: IfNotPresent
+                command: ["python3","gpu-test3.py","--epochs=7"]
+                resources:
+                  requests:
+                    cpu: "3.5"
+                    memory: "10Gi"
+                    nvidia.com/gpu: "1"
+                  limits:
+                    cpu: "3.6"
+                    memory: "10.5Gi"
+                    nvidia.com/gpu: "1"
+
+###############################################################################
+# 5 Podów × 8 epoch ~= 240s
+###############################################################################
+- apiVersion: batch.volcano.sh/v1alpha1
+  kind: Job
+  metadata:
+    name: job-7
+    namespace: default
+    labels:
+      sub-time: "0"
+  spec:
+    minAvailable: 5
+    schedulerName: volcano
+    policies:
+      - action: CompleteJob
+        event: TaskCompleted
+    tasks:
+      - name: test-gpu
+        replicas: 5
+        template:
+          metadata:
+            labels:
+              job: "job-7"
+              jobTaskNumber: "5"
+          spec:
+            restartPolicy: OnFailure
+            containers:
+              - name: task
+                image: 10.1.114.138:5000/pytorchjob-cifar10:v1.0
+                imagePullPolicy: IfNotPresent
+                command: ["python3","gpu-test3.py","--epochs=8"]
+                resources:
+                  requests:
+                    cpu: "4.0"
+                    memory: "12Gi"
+                    nvidia.com/gpu: "1"
+                  limits:
+                    cpu: "4.1"
+                    memory: "12.5Gi"
                     nvidia.com/gpu: "1"

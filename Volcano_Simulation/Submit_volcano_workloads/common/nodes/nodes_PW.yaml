@@ -1,6 +1,6 @@
 cluster:
   - metadata:
-      name: node-universal-1
+      name: k8s23-74
       labels:
         beta.kubernetes.io/os: simulated
         linc/nodeType: cloud
@@ -8,22 +8,22 @@ cluster:
       unschedulable: false
     status:
       allocatable:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
       capacity:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
     calculationSpeed: 1.0
-    ctnCreationTime: 2
-    ctnCreationExtraTime: 0.5
+    ctnCreationTime: 5
+    ctnCreationExtraTime: 1
     ctnCreationTimeInterval: 1
 
   - metadata:
-      name: node-universal-2
+      name: k8s20-74
       labels:
         beta.kubernetes.io/os: simulated
         linc/nodeType: cloud
@@ -31,22 +31,22 @@ cluster:
       unschedulable: false
     status:
       allocatable:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
       capacity:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
     calculationSpeed: 1.0
-    ctnCreationTime: 2
-    ctnCreationExtraTime: 0.5
+    ctnCreationTime: 5
+    ctnCreationExtraTime: 1
     ctnCreationTimeInterval: 1
 
   - metadata:
-      name: node-universal-3
+      name: k8s21-74
       labels:
         beta.kubernetes.io/os: simulated
         linc/nodeType: cloud
@@ -54,22 +54,22 @@ cluster:
       unschedulable: false
     status:
       allocatable:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
       capacity:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
     calculationSpeed: 1.0
-    ctnCreationTime: 2
-    ctnCreationExtraTime: 0.5
+    ctnCreationTime: 5
+    ctnCreationExtraTime: 1
     ctnCreationTimeInterval: 1
 
   - metadata:
-      name: node-universal-4
+      name: k8s22-74
       labels:
         beta.kubernetes.io/os: simulated
         linc/nodeType: cloud
@@ -77,22 +77,22 @@ cluster:
       unschedulable: false
     status:
       allocatable:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
       capacity:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
     calculationSpeed: 1.0
-    ctnCreationTime: 2
-    ctnCreationExtraTime: 0.5
+    ctnCreationTime: 5
+    ctnCreationExtraTime: 1
     ctnCreationTimeInterval: 1
 
   - metadata:
-      name: node-universal-5
+      name: k8s24-74
       labels:
         beta.kubernetes.io/os: simulated
         linc/nodeType: cloud
@@ -100,62 +100,16 @@ cluster:
       unschedulable: false
     status:
       allocatable:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
       capacity:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
+        cpu: 64
+        memory: 128Gi
+        nvidia.com/gpu: 32
         pods: 220
     calculationSpeed: 1.0
-    ctnCreationTime: 2
-    ctnCreationExtraTime: 0.5
-    ctnCreationTimeInterval: 1
-
-  - metadata:
-      name: node-universal-6
-      labels:
-        beta.kubernetes.io/os: simulated
-        linc/nodeType: cloud
-    spec:
-      unschedulable: false
-    status:
-      allocatable:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
-        pods: 220
-      capacity:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
-        pods: 220
-    calculationSpeed: 1.0
-    ctnCreationTime: 2
-    ctnCreationExtraTime: 0.5
-    ctnCreationTimeInterval: 1
-
-  - metadata:
-      name: node-universal-7
-      labels:
-        beta.kubernetes.io/os: simulated
-        linc/nodeType: cloud
-    spec:
-      unschedulable: false
-    status:
-      allocatable:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
-        pods: 220
-      capacity:
-        cpu: 16
-        memory: 32Gi
-        nvidia.com/gpu: 64
-        pods: 220
-    calculationSpeed: 1.0
-    ctnCreationTime: 2
-    ctnCreationExtraTime: 0.5
+    ctnCreationTime: 5
+    ctnCreationExtraTime: 1
     ctnCreationTimeInterval: 1

@@ -12,7 +12,7 @@ tiers:
   # Tier 2 – klasyczne predicates, a potem nasz SJF/SPT
   - plugins:
       - name: predicates
-      - name: sjf
+      - name: nodeorder
         arguments:
           # waga naszego SJF (domyślnie 1 — zmień, jeśli chcesz „mocniej” lub „słabiej”)
           sjf.weight: 1

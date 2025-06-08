@@ -11,7 +11,7 @@ tiers:
   # Tier 2: najpierw ogólne predicates, potem nasz LJF
   - plugins:
       - name: predicates
-      - name: ljf
+      - name: nodeorder
         arguments:
           # waga naszego LJF (domyślnie 1)
           ljf.weight: 1

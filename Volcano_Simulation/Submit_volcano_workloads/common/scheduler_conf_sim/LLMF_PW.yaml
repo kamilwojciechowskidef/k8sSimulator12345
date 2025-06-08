@@ -6,6 +6,6 @@ tiers:
       - name: conformance
   - plugins:
       - name: predicates
-      - name: llmf
+      - name: nodeorder
         arguments:
           llmf.weight: 1
